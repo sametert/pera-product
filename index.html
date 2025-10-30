@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ürün Filtreleme</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; }
+        .container { max-width: 900px; margin: 40px auto; background: #fff; padding: 25px 30px 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { text-align: center; margin-bottom: 30px; color: #5E17EB; }
+        .filter-group { display: flex; gap: 16px; justify-content: center; margin-bottom: 32px; flex-wrap: wrap; }
+        .filter-group select, .filter-group input { padding: 9px 12px; font-size: 1rem; border: 1px solid #ddd; border-radius: 5px; min-width: 160px; }
+        .product-list { margin-top: 16px; }
+        .product-item { display: flex; justify-content: space-between; align-items: center; background: #fafafa; border: 1px solid #e0e0e0; border-radius: 6px; padding: 12px 18px; margin-bottom: 10px; gap: 20px; font-size: 16px; }
+        .product-item a { color: #5E17EB; text-decoration: underline dotted; transition: color 0.2s; }
+        .product-item a:hover { color: #9d34e6; }
+        .product-table-head { font-weight: bold; font-size: 17px; display: flex; gap: 20px; justify-content: space-between; margin: 8px 0 15px 0; color: #6d6d6d; border-bottom: 1px solid #d7d7d7; padding-bottom: 8px; }
+        .no-results { text-align: center; color: #af2a2a; font-weight: bold; margin-top: 30px; }
+        @media (max-width: 700px) {
+            .container { padding: 10px 5px; }
+            .product-item, .product-table-head { flex-direction: column; align-items: flex-start; gap: 3px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Ürün Filtreleme</h1>
+        <div class="filter-group">
+            <input type="text" id="searchName" placeholder="Ürün adı ara..." oninput="filterProducts()">
+            <select id="sizeFilter" onchange="filterProducts()">
+                <option value="">Tüm Ölçüler</option>
+            </select>
+        </div>
+        <div class="product-table-head">
+            <span>Ürün Adı</span>
+            <span>Ölçü</span>
+        </div>
+        <div class="product-list" id="productList">
+            <!-- Ürünler buraya gelecek -->
+        </div>
+        <div id="noResults" class="no-results" style="display: none;">Sonuç bulunamadı.</div>
+    </div>
+    <script>
+    // Ürün verileri -- tamamı güncel ve eksiksiz olarak aşağıya gömüldü
+    const rawData = [
+    { "": "Gri Turuncu Modern Halı", "__1": "https://www.perahali.com/products/gri-turuncu-modern-hali?_pos=1&_psq=Gri+Turuncu+Modern+Hal%C4%B1&_ss=e&_v=1.0", "__2": "120x120", "__3": 1 },
+  { "": "Renkli Karabağ Çiçek Desenli Halı", "__1": "https://www.perahali.com/products/renkli-karabag-cicek-desenli-hali?_pos=1&_psq=Renkli+Karaba%C4%9F+%C3%87i%C3%A7ek+Desenli+Hal%C4%B1&_ss=e&_v=1.0", "__2": "180x275", "__3": 1 },
+  { "": "Kilim Tarzı Çok Renkli Modern Bohem Halı", "__1": "https://www.perahali.com/products/kilim-tarzi-cok-renkli-modern-bohem-hali?_pos=1&_psq=Kilim+Tarz%C4%B1+%C3%87ok+Renkli+Modern+Bohem+Hal%C4%B1&_ss=e&_v=1.0", "__2": "150x210", "__3": 1 },
+  { "": "Kilim Tarzı Çok Renkli Modern Çizgili Halı", "__1": "https://www.perahali.com/products/kilim-tarzi-cok-renkli-modern-hali?_pos=1&_psq=Kilim+Tarz%C4%B1+%C3%87ok+Renkli+Modern+%C3%87izgili+Hal%C4%B1&_ss=e&_v=1.0", "__2": "120x180", "__3": 1 },
+  { "": "Kilim Tarzı Çok Renkli Modern Çizgili Halı", "__1": "https://www.perahali.com/products/kilim-tarzi-cok-renkli-modern-hali?_pos=1&_psq=Kilim+Tarz%C4%B1+%C3%87ok+Renkli+Modern+Hali&_ss=e&_v=1.0", "__2": "150x210", "__3": 1 },
+  { "": "Mavi Pembe Karabağ Çiçekli Dekoratif Halı", "__1": "https://www.perahali.com/products/mavi-pembe-karabag-cicekli-dekoratif-hali?_pos=1&_psq=Mavi+Pembe+Karaba%C4%9F+%C3%87i%C3%A7ekli+Dekoratif+Hali&_ss=e&_v=1.0", "__2": "150x210", "__3": 1 },
+  { "": "Kilim Tarzı Çok Renkli Modern Bohem Halı", "__1": "https://www.perahali.com/products/kilim-tarzi-cok-renkli-modern-bohem-hali?_pos=1&_psq=Kilim+Tarz%C4%B1+%C3%87ok+Renkli+Modern+Bohem+Hali&_ss=e&_v=1.0", "__2": "200x290", "__3": 1 },
+  { "": "Kilim Tarzı Çok Renkli Modern Halı", "__1": "https://www.perahali.com/products/kilim-tarzi-cok-renkli-modern-hali?_pos=1&_psq=Kilim+Tarz%C4%B1+%C3%87ok+Renkli+Modern+Hali&_ss=e&_v=1.0", "__2": "120x180", "__3": 1 },
+  { "": "Pembe Gül Desenli Halı", "__1": "https://www.perahali.com/products/pembe-gul-desenli-hali?_pos=1&_psq=Pembe+G%C3%BCl+Desenli+Hali&_ss=e&_v=1.0", "__2": "120x180", "__3": 1 },
+  { "": "Renkli Karabağ Çiçek Desenli Halı", "__1": "https://www.perahali.com/products/renkli-karabag-cicek-desenli-hali?_pos=1&_psq=Renkli+Karaba%C4%9F+%C3%87i%C3%A7ek+Desenli+Hali&_ss=e&_v=1.0", "__2": "180x275", "__3": 1 },
+  { "": "Pastel Yeşil Damask Desenli Eskitme Halı", "__1": "https://www.perahali.com/products/pastel-yesil-damask-desenli-eskitme-hali?_pos=1&_psq=Pastel+Ye%C5%9Fil+Damask+Desenli+Eskitme+Hali&_ss=e&_v=1.0", "__2": "120x180", "__3": 1 },
+  { "": "Kilim Tarzı Çok Renkli Modern Bohem Halı", "__1": "https://www.perahali.com/products/kilim-tarzi-cok-renkli-modern-bohem-hali?_pos=1&_psq=Kilim+Tarz%C4%B1+%C3%87ok+Renkli+Modern+Bohem+Hali&_ss=e&_v=1.0", "__2": "120x180", "__3": 1 },
+  { "": "Kilim Tarzı Çok Renkli Modern Bohem Halı", "__1": "https://www.perahali.com/products/kilim-tarzi-cok-renkli-modern-bohem-hali?_pos=1&_psq=Kilim+Tarz%C4%B1+%C3%87ok+Renkli+Modern+Bohem+Hali&_ss=e&_v=1.0", "__2": "180x275", "__3": 1 },
+  { "": "Pastel Mavi Damask Desenli Eskitme Halı", "__1": "https://www.perahali.com/products/pastel-mavi-damask-desenli-eskitme-hali?_pos=1&_psq=Pastel+Mavi+Damask+Desenli+Eskitme+Hali&_ss=e&_v=1.0", "__2": "150x210", "__3": 1 },
+  { "": "Yeşil Çiçek Desenli Bohem Halı", "__1": "https://www.perahali.com/products/yesil-cicek-desenli-bohem-hali?_pos=1&_psq=Ye%C5%9Fil+%C3%87i%C3%A7ek+Desenli+Bohem+Hali&_ss=e&_v=1.0", "__2": "180x275", "__3": 1 },
+  { "": "Pembe Vintage Eskitme Halı", "__1": "https://www.perahali.com/products/pembe-vintage-eskitme-hali?_pos=1&_psq=Pembe+Vintage+Eskitme+Hali&_ss=e&_v=1.0", "__2": "120x180", "__3": 1 },
+  { "": "Bej Gri Abstract Desenli Modern Halı", "__1": "https://www.perahali.com/products/bej-gri-abstract-desenli-modern-hali?_pos=1&_psq=Bej+Gri+Abstract+Desenli+Modern+Hali&_ss=e&_v=1.0", "__2": "120x180", "__3": 1 },
+  { "": "Kilim Tarzı Çok Renkli Modern Halı", "__1": "https://www.perahali.com/products/kilim-tarzi-cok-renkli-modern-hali?_pos=1&_psq=Kilim+Tarz%C4%B1+%C3%87ok+Renkli+Modern+Hali&_ss=e&_v=1.0", "__2": "150x210", "__3": 1 },
+  { "": "Pastel Mavi Damask Desenli Eskitme Halı", "__1": "https://www.perahali.com/products/pastel-mavi-damask-desenli-eskitme-hali?_pos=1&_psq=Pastel+Mavi+Damask+Desenli+Eskitme+Hali&_ss=e&_v=1.0", "__2": "200x290", "__3": 1 },
+  { "": "Bej Gri Abstract Desenli Modern Halı", "__1": "https://www.perahali.com/products/bej-gri-abstract-desenli-modern-hali?_pos=1&_psq=Bej+Gri+Abstract+Desenli+Modern+Hali&_ss=e&_v=1.0", "__2": "180x275", "__3": 1 },
+  { "": "Bej Abstract Desenli Modern Halı", "__1": "https://www.perahali.com/products/bej-abstract-desenli-modern-hali?_pos=1&_psq=Bej+Abstract+Desenli+Modern+Hali&_ss=e&_v=1.0", "__2": "150x210", "__3": 1 },
+  { "": "Yeşil Abstract Desenli Eskitme Halı", "__1": "https://www.perahali.com/products/yesil-abstract-desenli-eskitme-hali?_pos=1&_psq=Ye%C5%9Fil+Abstract+Desenli+Eskitme+Hali&_ss=e&_v=1.0", "__2": "150x210", "__3": 1 },
+  { "": "Mavi Gri Abstract Desenli Modern Halı", "__1": "https://www.perahali.com/products/mavi-gri-abstract-desenli-modern-hali?_pos=1&_psq=Mavi+Gri+Abstract+Desenli+Modern+Hali&_ss=e&_v=1.0", "__2": "150x210", "__3": 1 },
+  { "": "Lila Abstract Desenli Halı", "__1": "https://www.perahali.com/products/lila-abstract-desenli-hali?_pos=1&_psq=Lila+Abstract+Desenli+Hali&_ss=e&_v=1.0", "__2": "150x210", "__3": 1 },
+  { "": "Sarı Abstract Desenli Modern Halı", "__1": "https://www.perahali.com/products/sari-abstract-desenli-modern-hali?_pos=1&_psq=Sarı+Abstract+Desenli+Modern+Hali&_ss=e&_v=1.0", "__2": "120x180", "__3": 1 },
+  { "": "Yeşil Mavi Abstract Desenli Modern Halı", "__1": "https://www.perahali.com/products/yesil-mavi-abstract-desenli-modern-hali?_pos=1&_psq=Ye%C5%9Fil+Mavi+Abstract+Desenli+Modern+Hali&_ss=e&_v=1.0", "__2": "120x180", "__3": 1 },
+  { "": "Gri Mavi Abstract Desenli Halı", "__1": "https://www.perahali.com/products/gri-mavi-abstract-desenli-hali?_pos=1&_psq=Gri+Mavi+Abstract+Desenli+Hali&_ss=e&_v=1.0", "__2": "150x210", "__3": 1 },
+  { "": "Yeşil Abstract Desenli Modern Halı", "__1": "https://www.perahali.com/products/yesil-abstract-desenli-modern-hali?_pos=1&_psq=Ye%C5%9Fil+Abstract+Desenli+Modern+Hali&_ss=e&_v=1.0", "__2": "120x180", "__3": 1 },
+  { "": "Mavi Abstract Desenli Eskitme Halı", "__1": "https://www.perahali.com/products/mavi-abstract-desenli-eskitme-hali?_pos=1&_psq=Mavi+Abstract+Desenli+Eskitme+Hali&_ss=e&_v=1.0", "__2": "150x210", "__3": 1 },
+  { "": "Bej Mavi Abstract Desenli Halı", "__1": "https://www.perahali.com/products/bej-mavi-abstract-desenli-hali?_pos=1&_psq=Bej+Mavi+Abstract+Desenli+Hali&_ss=e&_v=1.0", "__2": "180x275", "__3": 1 },
+  { "": "Krem Abstract Desenli Modern Halı", "__1": "https://www.perahali.com/products/krem-abstract-desenli-modern-hali?_pos=1&_psq=Krem+Abstract+Desenli+Modern+Hali&_ss=e&_v=1.0", "__2": "120x180", "__3": 1 },
+  { "": "Krem Abstract Desenli Modern Halı", "__1": "https://www.perahali.com/products/krem-abstract-desenli-modern-hali?_pos=1&_psq=Krem+Abstract+Desenli+Modern+Hali&_ss=e&_v=1.0", "__2": "150x210", "__3": 1 },
+  { "": "Mavi Abstract Desenli Modern Halı", "__1": "https://www.perahali.com/products/mavi-abstract-desenli-modern-hali?_pos=1&_psq=Mavi+Abstract+Desenli+Modern+Hali&_ss=e&_v=1.0", "__2": "180x275", "__3": 1 },
+  { "": "Gri Abstract Desenli Modern Halı", "__1": "https://www.perahali.com/products/gri-abstract-desenli-modern-hali?_pos=1&_psq=Gri+Abstract+Desenli+Modern+Hali&_ss=e&_v=1.0", "__2": "150x210", "__3": 1 },
+  { "": "Lila Abstract Desenli Eskitme Halı", "__1": "https://www.perahali.com/products/lila-abstract-desenli-eskitme-hali?_pos=1&_psq=Lila+Abstract+Desenli+Eskitme+Hali&_ss=e&_v=1.0", "__2": "150x210", "__3": 1 },
+  { "": "Gri Abstract Desenli Halı", "__1": "https://www.perahali.com/products/gri-abstract-desenli-hali?_pos=1&_psq=Gri+Abstract+Desenli+Hali&_ss=e&_v=1.0", "__2": "120x180", "__3": 1 },
+  { "": "Gri Abstract Desenli Modern Halı", "__1": "https://www.perahali.com/products/gri-abstract-desenli-modern-hali?_pos=1&_psq=Gri+Abstract+Desenli+Modern+Hali&_ss=e&_v=1.0", "__2": "200x290", "__3": 1 },
+  { "": "Bej Abstract Desenli Modern Halı", "__1": "https://www.perahali.com/products/bej-abstract-desenli-modern-hali?_pos=1&_psq=Bej+Abstract+Desenli+Modern+Hali&_ss=e&_v=1.0", "__2": "200x290", "__3": 1 },
+  { "": "Mavi Abstract Desenli Modern Halı", "__1": "https://www.perahali.com/products/mavi-abstract-desenli-modern-hali?_pos=1&_psq=Mavi+Abstract+Desenli+Modern+Hali&_ss=e&_v=1.0", "__2": "150x210", "__3": 1 },
+  { "": "Yeşil Abstract Desenli Modern Halı", "__1": "https://www.perahali.com/products/yesil-abstract-desenli-modern-hali?_pos=1&_psq=Ye%C5%9Fil+Abstract+Desenli+Modern+Hali&_ss=e&_v=1.0", "__2": "150x210", "__3": 1 },
+  { "": "Mavi Abstract Desenli Modern Halı", "__1": "https://www.perahali.com/products/mavi-abstract-desenli-modern-hali?_pos=1&_psq=Mavi+Abstract+Desenli+Modern+Hali&_ss=e&_v=1.0", "__2": "200x290", "__3": 1 },
+  { "": "Yeşil Abstract Desenli Eskitme Halı", "__1": "https://www.perahali.com/products/yesil-abstract-desenli-eskitme-hali?_pos=1&_psq=Ye%C5%9Fil+Abstract+Desenli+Eskitme+Hali&_ss=e&_v=1.0", "__2": "120x180", "__3": 1 },
+  { "": "Mavi Abstract Desenli Eskitme Halı", "__1": "https://www.perahali.com/products/mavi-abstract-desenli-eskitme-hali?_pos=1&_psq=Mavi+Abstract+Desenli+Eskitme+Hali&_ss=e&_v=1.0", "__2": "180x275", "__3": 1 },
+  { "": "Bej Abstract Desenli Eskitme Halı", "__1": "https://www.perahali.com/products/bej-abstract-desenli-eskitme-hali?_pos=1&_psq=Bej+Abstract+Desenli+Eskitme+Hali&_ss=e&_v=1.0", "__2": "150x210", "__3": 1 },
+  { "": "Krem Abstract Desenli Halı", "__1": "https://www.perahali.com/products/krem-abstract-desenli-hali?_pos=1&_psq=Krem+Abstract+Desenli+Hali&_ss=e&_v=1.0", "__2": "120x180", "__3": 1 },
+  { "": "Mavi Abstract Desenli Eskitme Halı", "__1": "https://www.perahali.com/products/mavi-abstract-desenli-eskitme-hali?_pos=1&_psq=Mavi+Abstract+Desenli+Eskitme+Hali&_ss=e&_v=1.0", "__2": "150x210", "__3": 1 },
+  { "": "Krem Abstract Desenli Modern Halı", "__1": "https://www.perahali.com/products/krem-abstract-desenli-modern-hali?_pos=1&_psq=Krem+Abstract+Desenli+Modern+Hali&_ss=e&_v=1.0", "__2": "150x210", "__3": 1 },
+  { "": "Krem Abstract Desenli Modern Halı", "__1": "https://www.perahali.com/products/krem-abstract-desenli-modern-hali?_pos=1&_psq=Krem+Abstract+Desenli+Modern+Hali&_ss=e&_v=1.0", "__2": "200x290", "__3": 1 },
+  { "": "Bej Abstract Desenli Modern Halı", "__1": "https://www.perahali.com/products/bej-abstract-desenli-modern-hali?_pos=1&_psq=Bej+Abstract+Desenli+Modern+Hali&_ss=e&_v=1.0", "__2": "120x180", "__3": 1 },
+  { "": "Krem Abstract Desenli Modern Halı", "__1": "https://www.perahali.com/products/krem-abstract-desenli-modern-hali?_pos=1&_psq=Krem+Abstract+Desenli+Modern+Hali&_ss=e&_v=1.0", "__2": "180x275", "__3": 1 },
+  { "": "Bej Abstract Desenli Modern Halı", "__1": "https://www.perahali.com/products/bej-abstract-desenli-modern-hali?_pos=1&_psq=Bej+Abstract+Desenli+Modern+Hali&_ss=e&_v=1.0", "__2": "180x275", "__3": 1 },
+  { "": "Yeşil Abstract Desenli Modern Halı", "__1": "https://www.perahali.com/products/yesil-abstract-desenli-modern-hali?_pos=1&_psq=Ye%C5%9Fil+Abstract+Desenli+Modern+Hali&_ss=e&_v=1.0", "__2": "200x290", "__3": 1 },
+  { "": "Gri Abstract Desenli Modern Halı", "__1": "https://www.perahali.com/products/gri-abstract-desenli-modern-hali?_pos=1&_psq=Gri+Abstract+Desenli+Modern+Hali&_ss=e&_v=1.0", "__2": "150x210", "__3": 1 },
+  { "": "Yeşil Abstract Desenli Modern Halı", "__1": "https://www.perahali.com/products/yesil-abstract-desenli-modern-hali?_pos=1&_psq=Ye%C5%9Fil+Abstract+Desenli+Modern+Hali&_ss=e&_v=1.0", "__2": "120x180", "__3": 1 },
+  { "": "Krem Abstract Desenli Halı", "__1": "https://www.perahali.com/products/krem-abstract-desenli-hali?_pos=1&_psq=Krem+Abstract+Desenli+Hali&_ss=e&_v=1.0", "__2": "150x210", "__3": 1 },
+  { "": "Krem Abstract Desenli Modern Halı", "__1": "https://www.perahali.com/products/krem-abstract-desenli-modern-hali?_pos=1&_psq=Krem+Abstract+Desenli+Modern+Hali&_ss=e&_v=1.0", "__2": "200x290", "__3": 1 },
+  { "": "Bej Abstract Desenli Eskitme Halı", "__1": "https://www.perahali.com/products/bej-abstract-desenli-eskitme-hali?_pos=1&_psq=Bej+Abstract+Desenli+Eskitme+Hali&_ss=e&_v=1.0", "__2": "200x290", "__3": 1 },
+  { "": "Krem Abstract Desenli Modern Halı", "__1": "https://www.perahali.com/products/krem-abstract-desenli-modern-hali?_pos=1&_psq=Krem+Abstract+Desenli+Modern+Hali&_ss=e&_v=1.0", "__2": "150x210", "__3": 1 },
+  { "": "Gri Abstract Desenli Modern Halı", "__1": "https://www.perahali.com/products/gri-abstract-desenli-modern-hali?_pos=1&_psq=Gri+Abstract+Desenli+Modern+Hali&_ss=e&_v=1.0", "__2": "200x290", "__3": 1 },
+  { "": "Gri Mavi Abstract Desenli Modern Halı", "__1": "https://www.perahali.com/products/gri-mavi-abstract-desenli-modern-hali?_pos=1&_psq=Gri+Mavi+Abstract+Desenli+Modern+Hali&_ss=e&_v=1.0", "__2": "120x180", "__3": 1 },
+  { "": "Bej Abstract Desenli Eskitme Halı", "__1": "https://www.perahali.com/products/bej-abstract-desenli-eskitme-hali?_pos=1&_psq=Bej+Abstract+Desenli+Eskitme+Hali&_ss=e&_v=1.0", "__2": "180x275", "__3": 1 },
+  { "": "Bej Gri Abstract Desenli Modern Halı", "__1": "https://www.perahali.com/products/bej-gri-abstract-desenli-modern-hali?_pos=1&_psq=Bej+Gri+Abstract+Desenli+Modern+Hali&_ss=e&_v=1.0", "__2": "200x290", "__3": 1 },
+  { "": "Krem Abstract Desenli Modern Halı", "__1": "https://www.perahali.com/products/krem-abstract-desenli-modern-hali?_pos=1&_psq=Krem+Abstract+Desenli+Modern+Hali&_ss=e&_v=1.0", "__2": "120x180", "__3": 1 },
+  { "": "Yeşil Abstract Desenli Eskitme Halı", "__1": "https://www.perahali.com/products/yesil-abstract-desenli-eskitme-hali?_pos=1&_psq=Ye%C5%9Fil+Abstract+Desenli+Eskitme+Hali&_ss=e&_v=1.0", "__2": "150x210", "__3": 1 },
+  { "": "Mavi Abstract Desenli Eskitme Halı", "__1": "https://www.perahali.com/products/mavi-abstract-desenli-eskitme-hali?_pos=1&_psq=Mavi+Abstract+Desenli+Eskitme+Hali&_ss=e&_v=1.0", "__2": "200x290", "__3": 1 },
+  { "": "Lila Abstract Desenli Modern Halı", "__1": "https://www.perahali.com/products/lila-abstract-desenli-modern-hali?_pos=1&_psq=Lila+Abstract+Desenli+Modern+Hali&_ss=e&_v=1.0", "__2": "120x180", "__3": 1 },
+  { "": "Bej Abstract Desenli Eskitme Halı", "__1": "https://www.perahali.com/products/bej-abstract-desenli-eskitme-hali?_pos=1&_psq=Bej+Abstract+Desenli+Eskitme+Hali&_ss=e&_v=1.0", "__2": "120x180", "__3": 1 },
+  { "": "Yeşil Abstract Desenli Eskitme Halı", "__1": "https://www.perahali.com/products/yesil-abstract-desenli-eskitme-hali?_pos=1&_psq=Ye%C5%9Fil+Abstract+Desenli+Eskitme+Hali&_ss=e&_v=1.0", "__2": "200x290", "__3": 1 },
+  { "": "Krem Abstract Desenli Halı", "__1": "https://www.perahali.com/products/krem-abstract-desenli-hali?_pos=1&_psq=Krem+Abstract+Desenli+Hali&_ss=e&_v=1.0", "__2": "200x290", "__3": 1 },
+  { "": "Yeşil Abstract Desenli Eskitme Halı", "__1": "https://www.perahali.com/products/yesil-abstract-desenli-eskitme-hali?_pos=1&_psq=Ye%C5%9Fil+Abstract+Desenli+Eskitme+Hali&_ss=e&_v=1.0", "__2": "180x275", "__3": 1 },
+  { "": "Krem Abstract Desenli Modern Halı", "__1": "https://www.perahali.com/products/krem-abstract-desenli-modern-hali?_pos=1&_psq=Krem+Abstract+Desenli+Modern+Hali&_ss=e&_v=1.0", "__2": "120x180", "__3": 1 },
+  { "": "Gri Abstract Desenli Halı", "__1": "https://www.perahali.com/products/gri-abstract-desenli-hali?_pos=1&_psq=Gri+Abstract+Desenli+Hali&_ss=e&_v=1.0", "__2": "150x210", "__3": 1 },
+  { "": "Gri Abstract Desenli Modern Halı", "__1": "https://www.perahali.com/products/gri-abstract-desenli-modern-hali?_pos=1&_psq=Gri+Abstract+Desenli+Modern+Hali&_ss=e&_v=1.0", "__2": "120x180", "__3": 1 },
+  { "": "Krem Abstract Desenli Modern Halı", "__1": "https://www.perahali.com/products/krem-abstract-desenli-modern-hali?_pos=1&_psq=Krem+Abstract+Desenli+Modern+Hali&_ss=e&_v=1.0", "__2": "150x210", "__3": 1 },
+  { "": "Bej Abstract Desenli Eskitme Halı", "__1": "https://www.perahali.com/products/bej-abstract-desenli-eskitme-hali?_pos=1&_psq=Bej+Abstract+Desenli+Eskitme+Hali&_ss=e&_v=1.0", "__2": "150x210", "__3": 1 },
+  { "": "Gri Abstract Desenli Halı", "__1": "https://www.perahali.com/products/gri-abstract-desenli-hali?_pos=1&_psq=Gri+Abstract+Desenli+Hali&_ss=e&_v=1.0", "__2": "120x180", "__3": 1 },
+  { "": "Mavi Abstract Desenli Eskitme Halı", "__1": "https://www.perahali.com/products/mavi-abstract-desenli-eskitme-hali?_pos=1&_psq=Mavi+Abstract+Desenli+Eskitme+Hali&_ss=e&_v=1.0", "__2": "120x180", "__3": 1 },
+  { "": "Lila Abstract Desenli Eskitme Halı", "__1": "https://www.perahali.com/products/lila-abstract-desenli-eskitme-hali?_pos=1&_psq=Lila+Abstract+Desenli+Eskitme+Hali&_ss=e&_v=1.0", "__2": "120x180", "__3": 1 },
+  { "": "Yeşil Abstract Desenli Modern Halı", "__1": "https://www.perahali.com/products/yesil-abstract-desenli-modern-hali?_pos=1&_psq=Ye%C5%9Fil+Abstract+Desenli+Modern+Hali&_ss=e&_v=1.0", "__2": "150x210", "__3": 1 },
+  { "": "Bej Abstract Desenli Eskitme Halı", "__1": "https://www.perahali.com/products/bej-abstract-desenli-eskitme-hali?_pos=1&_psq=Bej+Abstract+Desenli+Eskitme+Hali&_ss=e&_v=1.0", "__2": "180x275", "__3": 1 },
+  { "": "Gri Abstract Desenli Modern Halı", "__1": "https://www.perahali.com/products/gri-abstract-desenli-modern-hali?_pos=1&_psq=Gri+Abstract+Desenli+Modern+Hali&_ss=e&_v=1.0", "__2": "180x275", "__3": 1 },
+  { "": "Krem Abstract Desenli Modern Halı", "__1": "https://www.perahali.com/products/krem-abstract-desenli-modern-hali?_pos=1&_psq=Krem+Abstract+Desenli+Modern+Hali&_ss=e&_v=1.0", "__2": "180x275", "__3": 1 },
+  { "": "Lila Abstract Desenli Eskitme Halı", "__1": "https://www.perahali.com/products/lila-abstract-desenli-eskitme-hali?_pos=1&_psq=Lila+Abstract+Desenli+Eskitme+Hali&_ss=e&_v=1.0", "__2": "180x275", "__3": 1 },
+  { "": "Yeşil Abstract Desenli Eskitme Halı", "__1": "https://www.perahali.com/products/yesil-abstract-desenli-eskitme-hali?_pos=1&_psq=Ye%C5%9Fil+Abstract+Desenli+Eskitme+Hali&_ss=e&_v=1.0", "__2": "180x275", "__3": 1 },
+  { "": "Bej Abstract Desenli Modern Halı", "__1": "https://www.perahali.com/products/bej-abstract-desenli-modern-hali?_pos=1&_psq=Bej+Abstract+Desenli+Modern+Hali&_ss=e&_v=1.0", "__2": "180x275", "__3": 1 },
+  { "": "Gri Abstract Desenli Modern Halı", "__1": "https://www.perahali.com/products/gri-abstract-desenli-modern-hali?_pos=1&_psq=Gri+Abstract+Desenli+Modern+Hali&_ss=e&_v=1.0", "__2": "200x290", "__3": 1 },
+  { "": "Yeşil Abstract Desenli Modern Halı", "__1": "https://www.perahali.com/products/yesil-abstract-desenli-modern-hali?_pos=1&_psq=Ye%C5%9Fil+Abstract+Desenli+Modern+Hali&_ss=e&_v=1.0", "__2": "200x290", "__3": 1 },
+  { "": "Lüks Mürdüm Damask Desenli Altın Eskitme Detaylı Bordürlü Halı", "__1": "https://www.perahali.com/products/luks-murdum-damask-desenli-altin-eskitme-detayli-bordurlu-hali?_pos=1&_psq=L%C3%BCks+M%C3%BCrd%C3%BCm+Damask+Desenli+Alt%C4%B1n+Eskitme+Detayl%C4%B1+Bord%C3%BCrl%C3%BC+Hali&_ss=e&_v=1.0", "__2": "200x290", "__3": 1 }
+    ];
+
+// İsmi, linki ve ölçüsü boş/baslık/boşluk olanları çıkararak temizle
+const products = rawData.filter(item =>
+    item[''] &&
+    item[''] !== 'Adı' &&
+    item[''] !== '' &&
+    item['__1'] &&
+    item['__2']
+).map(item => ({
+    name: item[''],
+    link: item['__1'],
+    size: item['__2']
+}));
+
+    function fillSizeOptions() {
+        const sizeSet = new Set(products.map(p => p.size));
+        const sizeFilter = document.getElementById('sizeFilter');
+        sizeFilter.innerHTML = '<option value="">Tüm Ölçüler</option>';
+        sizeSet.forEach(size => {
+            const opt = document.createElement('option');
+            opt.value = size;
+            opt.textContent = size;
+            sizeFilter.appendChild(opt);
+        });
+    }
+
+    function filterProducts() {
+        const nameValue = document.getElementById('searchName').value.trim().toLowerCase();
+        const sizeValue = document.getElementById('sizeFilter').value;
+        const list = document.getElementById('productList');
+        const noResults = document.getElementById('noResults');
+        list.innerHTML = '';
+
+        const filtered = products.filter(p => (
+            (!nameValue || p.name.toLowerCase().includes(nameValue)) &&
+            (!sizeValue || p.size === sizeValue)
+        ));
+
+        if (filtered.length === 0) {
+            noResults.style.display = 'block';
+        } else {
+            noResults.style.display = 'none';
+            filtered.forEach(p => {
+                const div = document.createElement('div');
+                div.className = 'product-item';
+                div.innerHTML = `
+                    <span><a href="${p.link}" target="_blank">${p.name}</a></span>
+                    <span>${p.size}</span>
+                `;
+                list.appendChild(div);
+            });
+        }
+    }
+
+    fillSizeOptions();
+    filterProducts();
+    </script>
+</body>
+</html>
