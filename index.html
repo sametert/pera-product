@@ -277,17 +277,34 @@ const products = rawData.filter(item =>
     size: item['__2']
 }));
 
-    function fillSizeOptions() {
-        const sizeSet = new Set(products.map(p => p.size));
-        const sizeFilter = document.getElementById('sizeFilter');
-        sizeFilter.innerHTML = '<option value="">Tüm Ölçüler</option>';
-        sizeSet.forEach(size => {
-            const opt = document.createElement('option');
-            opt.value = size;
-            opt.textContent = size;
-            sizeFilter.appendChild(opt);
-        });
+    // Ölçüleri karşılaştırmak için fonksiyon:
+    function parseSize(sizeStr) {
+      // '120x180' -> [120, 180]
+      if (!sizeStr) return [0, 0];
+      const parts = sizeStr.split("x").map(Number);
+      if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) return parts;
+      return [99999, 99999]; // Bozuksa en sona at
     }
+
+    // Eşsiz ölçüleri sırala (küçükten büyüğe)
+    const allSizes = [...new Set(rawData.map(item => item["__2"]).filter(Boolean))]
+      .sort((a, b) => {
+        const [aw, al] = parseSize(a);
+        const [bw, bl] = parseSize(b);
+        // Önce genişlik (w), sonra uzunluk (l). Küçükten büyüğe.
+        if (aw !== bw) return aw - bw;
+        return al - bl;
+      });
+
+    // Ölçü select'ini yalnızca sıralı allSizes ile doldur:
+    const sizeFilter = document.getElementById("sizeFilter");
+    sizeFilter.innerHTML = '<option value="">Tüm Ölçüler</option>';
+    allSizes.forEach(size => {
+      const opt = document.createElement("option");
+      opt.value = size;
+      opt.textContent = size;
+      sizeFilter.appendChild(opt);
+    });
 
     function filterProducts() {
         const nameValue = document.getElementById('searchName').value.trim().toLowerCase();
@@ -295,12 +312,17 @@ const products = rawData.filter(item =>
         const list = document.getElementById('productList');
         const noResults = document.getElementById('noResults');
         list.innerHTML = '';
-
+        // Filtre sonucu, ölçülere göre küçükten büyüğe sıralansın
         const filtered = products.filter(p => (
             (!nameValue || p.name.toLowerCase().includes(nameValue)) &&
             (!sizeValue || p.size === sizeValue)
         ));
-
+        filtered.sort((a, b) => {
+            const [aw, al] = parseSize(a.size);
+            const [bw, bl] = parseSize(b.size);
+            if (aw !== bw) return aw - bw;
+            return al - bl;
+        });
         if (filtered.length === 0) {
             noResults.style.display = 'block';
         } else {
@@ -317,8 +339,9 @@ const products = rawData.filter(item =>
         }
     }
 
-    fillSizeOptions();
     filterProducts();
+    sizeFilter.addEventListener('change', filterProducts);
+    document.getElementById('searchName').addEventListener('input', filterProducts);
     </script>
 </body>
 </html>
